@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Social Dork – Phishing Email Analyser</title>
+  <style>
+    /* =========================================================
+       RESET & BASE
+    ========================================================= */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #0d1117;
+      --surface:    #161b22;
+      --surface2:   #21262d;
+      --border:     #30363d;
+      --accent:     #58a6ff;
+      --accent-dim: #1f3a5f;
+      --green:      #3fb950;
+      --green-bg:   #0f2a16;
+      --yellow:     #d29922;
+      --yellow-bg:  #2c1f04;
+      --red:        #f85149;
+      --red-bg:     #3b0d0c;
+      --text:       #e6edf3;
+      --text-muted: #8b949e;
+      --radius:     10px;
+      --radius-sm:  6px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* =========================================================
+       HEADER
+    ========================================================= */
+    header {
+      background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 28px 24px 24px;
+      text-align: center;
+    }
+
+    .logo-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      margin-bottom: 8px;
+    }
+
+    .logo-icon {
+      width: 48px; height: 48px;
+      background: linear-gradient(135deg, var(--accent) 0%, #a371f7 100%);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px;
+      flex-shrink: 0;
+    }
+
+    h1 {
+      font-size: clamp(1.4rem, 4vw, 2rem);
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(90deg, var(--accent), #a371f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .tagline {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-top: 4px;
+    }
+
+    .privacy-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 14px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-size: 0.78rem;
+      color: var(--green);
+    }
+
+    /* =========================================================
+       MAIN LAYOUT
+    ========================================================= */
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 32px 20px 60px;
+    }
+
+    /* =========================================================
+       INPUT CARD
+    ========================================================= */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .card-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+    }
+
+    label { display: block; }
+
+    textarea {
+      width: 100%;
+      min-height: 240px;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      font-family: "SF Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
+      font-size: 0.82rem;
+      line-height: 1.6;
+      resize: vertical;
+      transition: border-color 0.2s;
+      outline: none;
+    }
+
+    textarea:focus { border-color: var(--accent); }
+    textarea::placeholder { color: var(--text-muted); }
+
+    .input-hint {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 8px;
+    }
+
+    /* =========================================================
+       BUTTONS
+    ========================================================= */
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 10px 22px;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    button:active { transform: scale(0.97); }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #a371f7);
+      color: #fff;
+    }
+
+    .btn-primary:hover { opacity: 0.88; }
+
+    .btn-secondary {
+      background: var(--surface2);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover { color: var(--text); border-color: var(--text-muted); }
+
+    .btn-sample {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent-dim);
+      font-size: 0.8rem;
+    }
+
+    .btn-sample:hover { background: var(--accent-dim); }
+
+    /* =========================================================
+       RESULTS SECTION
+    ========================================================= */
+    #results { display: none; }
+
+    /* Score Hero */
+    .score-hero {
+      border-radius: var(--radius);
+      padding: 30px 24px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      flex-wrap: wrap;
+      border: 1px solid;
+    }
+
+    .score-hero.low    { background: var(--green-bg);  border-color: var(--green); }
+    .score-hero.medium { background: var(--yellow-bg); border-color: var(--yellow); }
+    .score-hero.high   { background: var(--red-bg);    border-color: var(--red); }
+
+    .score-dial {
+      position: relative;
+      width: 110px; height: 110px;
+      flex-shrink: 0;
+    }
+
+    .score-dial svg { transform: rotate(-90deg); }
+
+    .score-dial circle {
+      fill: none;
+      stroke-width: 10;
+    }
+
+    .dial-track { stroke: rgba(255,255,255,0.08); }
+    .dial-fill  { transition: stroke-dashoffset 1s cubic-bezier(0.4,0,0.2,1); stroke-linecap: round; }
+
+    .score-number {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .score-number .num {
+      font-size: 2rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .score-number .denom {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .score-info { flex: 1; min-width: 200px; }
+
+    .classification {
+      font-size: 1.5rem;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .score-hero.low    .classification { color: var(--green); }
+    .score-hero.medium .classification { color: var(--yellow); }
+    .score-hero.high   .classification { color: var(--red); }
+
+    .score-summary { font-size: 0.9rem; color: var(--text-muted); }
+
+    /* Indicators */
+    .section-heading {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-heading::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .indicator-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+
+    .indicator-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+
+    .indicator-item.triggered {
+      border-left: 3px solid var(--red);
+      background: #1a0e0e;
+    }
+
+    .indicator-item.info {
+      border-left: 3px solid var(--accent);
+      background: #0e1620;
+    }
+
+    .ind-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+
+    .ind-body { flex: 1; }
+
+    .ind-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-bottom: 3px;
+    }
+
+    .ind-desc { font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; }
+
+    .ind-score-badge {
+      flex-shrink: 0;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 20px;
+      align-self: flex-start;
+    }
+
+    .badge-red    { background: rgba(248,81,73,0.2);  color: var(--red); }
+    .badge-yellow { background: rgba(210,153,34,0.2); color: var(--yellow); }
+    .badge-blue   { background: rgba(88,166,255,0.2); color: var(--accent); }
+    .badge-green  { background: rgba(63,185,80,0.2);  color: var(--green); }
+
+    /* Score breakdown bar */
+    .score-bar-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin-bottom: 24px;
+    }
+
+    .bar-label-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .bar-track {
+      height: 10px;
+      background: var(--surface2);
+      border-radius: 5px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 5px;
+      transition: width 1s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    .bar-fill.low    { background: var(--green); }
+    .bar-fill.medium { background: var(--yellow); }
+    .bar-fill.high   { background: linear-gradient(90deg, var(--yellow), var(--red)); }
+
+    /* Recommendations */
+    .rec-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+
+    .rec-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      font-size: 0.88rem;
+    }
+
+    .rec-num {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 0.75rem;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* Header analysis detail */
+    .detail-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+      font-size: 0.78rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: var(--text-muted);
+      max-height: 220px;
+      overflow-y: auto;
+      margin-top: 12px;
+    }
+
+    .detail-box .hl-red    { color: var(--red); }
+    .detail-box .hl-yellow { color: var(--yellow); }
+    .detail-box .hl-green  { color: var(--green); }
+
+    /* Score breakdown table */
+    .breakdown-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      margin-top: 10px;
+    }
+
+    .breakdown-table th {
+      text-align: left;
+      color: var(--text-muted);
+      font-weight: 600;
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .breakdown-table td { padding: 7px 10px; border-bottom: 1px solid var(--border); }
+    .breakdown-table tr:last-child td { border-bottom: none; }
+    .breakdown-table .pts { font-weight: 700; text-align: right; color: var(--red); }
+    .breakdown-table .pts.zero { color: var(--green); }
+
+    /* Reset / analyse again */
+    .again-row { text-align: center; margin-top: 32px; }
+
+
+    /* =========================================================
+       UTILITY
+    ========================================================= */
+    .hidden { display: none !important; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    #results { animation: fadeIn 0.4s ease; }
+
+    /* Responsive */
+    @media (max-width: 540px) {
+      .score-hero { flex-direction: column; text-align: center; }
+      .btn-row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ============================================================
+     HEADER
+============================================================ -->
+<header>
+  <div class="logo-row">
+    <div class="logo-icon">🎣</div>
+    <h1>The Social Dork<br>Phishing Email Analyser</h1>
+  </div>
+  <p class="tagline">Paste a suspicious email below. All analysis happens inside your browser — nothing is ever sent anywhere.</p>
+  <span class="privacy-badge">🔒 100% Private &nbsp;·&nbsp; No servers &nbsp;·&nbsp; No tracking &nbsp;·&nbsp; No AI APIs</span>
+</header>
+
+<!-- ============================================================
+     MAIN
+============================================================ -->
+<main>
+
+  <!-- INPUT CARD -->
+  <div class="card" id="inputCard">
+    <p class="card-title">📋 Paste Email Content</p>
+    <label for="emailInput">
+      <textarea
+        id="emailInput"
+        placeholder="Paste the full email here — including headers if you have them, plus the body text. For example:
+
+From: support@paypa1-secure.com
+Reply-To: attacker@gmail.com
+Subject: URGENT: Your account has been suspended
+Received-SPF: fail (domain does not designate …)
+
+Dear Customer,
+
+Your account will be permanently closed in 24 hours unless you verify your identity immediately.
+Click here to verify: http://192.168.1.1/verify or bit.ly/abc123
+
+Please provide your password and one-time code to avoid suspension.
+
+Regards,
+PayPal Security Team"
+      ></textarea>
+    </label>
+    <p class="input-hint">💡 Tip: paste the full email including headers (From, Reply-To, Received-SPF, DKIM, DMARC lines) for the most thorough analysis. Plain body text also works.</p>
+
+    <div class="btn-row">
+      <button class="btn-primary" onclick="analyse()">🔍 Analyse Email</button>
+      <button class="btn-secondary" onclick="clearAll()">🗑 Clear</button>
+      <button class="btn-sample" onclick="loadSample()">📧 Load Sample Phishing Email</button>
+    </div>
+  </div>
+
+  <!-- RESULTS SECTION -->
+  <section id="results">
+
+    <!-- Score Hero -->
+    <div class="score-hero" id="scoreHero">
+      <div class="score-dial">
+        <svg width="110" height="110" viewBox="0 0 110 110">
+          <circle class="dial-track" cx="55" cy="55" r="47"/>
+          <circle class="dial-fill" id="dialFill" cx="55" cy="55" r="47"
+                  stroke-dasharray="295.3"
+                  stroke-dashoffset="295.3"/>
+        </svg>
+        <div class="score-number">
+          <span class="num" id="scoreNumber">0</span>
+          <span class="denom">/100</span>
+        </div>
+      </div>
+      <div class="score-info">
+        <div class="classification" id="classification">—</div>
+        <div class="score-summary" id="scoreSummary"></div>
+      </div>
+    </div>
+
+    <!-- Score bar -->
+    <div class="score-bar-wrap">
+      <div class="bar-label-row">
+        <span>Risk Score</span>
+        <span id="barLabel">0 / 100</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" id="barFill" style="width:0%"></div>
+      </div>
+      <div class="bar-label-row" style="margin-top:8px; font-size:0.72rem;">
+        <span style="color:var(--green)">▌ 0–39 Low Risk</span>
+        <span style="color:var(--yellow)">▌ 40–69 Suspicious</span>
+        <span style="color:var(--red)">▌ 70–100 High Risk</span>
+      </div>
+    </div>
+
+    <!-- Triggered Indicators -->
+    <div id="triggeredSection">
+      <p class="section-heading">⚠️ Warning Signs Detected</p>
+      <div class="indicator-list" id="triggeredList"></div>
+    </div>
+
+    <!-- Clean Checks -->
+    <div id="cleanSection">
+      <p class="section-heading">✅ Checks Passed</p>
+      <div class="indicator-list" id="cleanList"></div>
+    </div>
+
+    <!-- Score Breakdown -->
+    <div class="card" style="margin-bottom:24px;">
+      <p class="card-title">📊 Score Breakdown</p>
+      <table class="breakdown-table" id="breakdownTable">
+        <thead>
+          <tr>
+            <th>Indicator</th>
+            <th style="text-align:right">Points Added</th>
+          </tr>
+        </thead>
+        <tbody id="breakdownBody"></tbody>
+        <tfoot>
+          <tr>
+            <td style="font-weight:700">Total (capped at 100)</td>
+            <td class="pts" id="breakdownTotal"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <!-- Recommendations -->
+    <p class="section-heading">💡 What To Do Next</p>
+    <div class="rec-list" id="recList"></div>
+
+    <!-- Analyse Again -->
+    <div class="again-row">
+      <button class="btn-secondary" onclick="resetToInput()">← Analyse Another Email</button>
+    </div>
+
+  </section>
+
+</main>
+
+
+
+<!-- ============================================================
+     ANALYSIS ENGINE  (pure JS, no external dependencies)
+============================================================ -->
+<script>
+"use strict";
+
+/* ------------------------------------------------------------------
+   INDICATOR DEFINITIONS
+   Each indicator has:
+     id        – unique key
+     label     – short name shown in the UI
+     points    – score contribution if triggered
+     severity  – 'high' | 'medium' | 'low'
+     check(text, lines, lc) – function returning { triggered, detail }
+------------------------------------------------------------------ */
+const INDICATORS = [
+
+  /* ---- URGENCY & PRESSURE ---- */
+  {
+    id: 'urgency_language',
+    label: 'Urgency / Pressure Language',
+    points: 12,
+    severity: 'high',
+    description: 'Phishers use extreme urgency to stop you thinking clearly.',
+    check(text, lines, lc) {
+      const patterns = [
+        /\burgent\b/i, /\bimmediately\b/i, /\bact now\b/i, /\bright away\b/i,
+        /\bwithout delay\b/i, /\btime.sensitive\b/i, /\bexpires?\b.*\b(today|hours?|minutes?)\b/i,
+        /\b24 hours?\b/i, /\b48 hours?\b/i, /\byour account (will|has been|is about to)\b/i,
+        /\blast (chance|warning|notice)\b/i, /\bfinal (notice|warning|reminder)\b/i,
+        /\bdo not (delay|ignore|wait)\b/i, /\baction required\b/i,
+      ];
+      const hits = patterns.filter(p => p.test(lc));
+      return { triggered: hits.length > 0, detail: `Found ${hits.length} urgency pattern(s).` };
+    }
+  },
+
+  /* ---- ACCOUNT SUSPENSION / CLOSURE THREATS ---- */
+  {
+    id: 'suspension_threat',
+    label: 'Account Suspension or Closure Threat',
+    points: 12,
+    severity: 'high',
+    description: 'Threatening to close, suspend or lock your account is a classic social-engineering tactic.',
+    check(text, lines, lc) {
+      const patterns = [
+        /\b(suspended?|suspension|closed?|closure|locked?|disabled?|terminated?|deactivated?)\b/i,
+        /\b(block(ed)?|restrict(ed|ion)?)\b.*\baccount\b/i,
+        /\baccount.*(suspended?|closed?|locked?|disabled?|blocked?)\b/i,
+      ];
+      const hits = patterns.filter(p => p.test(lc));
+      return { triggered: hits.length > 0, detail: `Detected account-threat language.` };
+    }
+  },
+
+  /* ---- PASSWORD REQUEST ---- */
+  {
+    id: 'password_request',
+    label: 'Request for Password',
+    points: 20,
+    severity: 'high',
+    description: 'Legitimate organisations NEVER ask for your password by email.',
+    check(text, lines, lc) {
+      const patterns = [
+        /\benter\b.*\bpassword\b/i, /\bprovide\b.*\bpassword\b/i,
+        /\bconfirm\b.*\bpassword\b/i, /\btype\b.*\bpassword\b/i,
+        /\bsupply\b.*\bpassword\b/i, /\byour password\b/i, /\bpassword.*below\b/i,
+        /\bpassword.*verify\b/i, /\bverify.*password\b/i,
+      ];
+      const hits = patterns.filter(p => p.test(lc));
+      return { triggered: hits.length > 0, detail: 'Email requests a password.' };
+    }
+  },
+
+  /* ---- MFA / OTP / VERIFICATION CODE ---- */
+  {
+    id: 'mfa_code_request',
+    label: 'Request for MFA / Verification Code',
+    points: 18,
+    severity: 'high',
+    description: 'Asking for a one-time code is a real-time phishing (MFA bypass) technique.',
+    check(text, lines, lc) {
+      const patterns = [
+        /\bone.time (code|password|pin)\b/i, /\b(otp|mfa|2fa|two.factor)\b.*\b(code|pin|number)\b/i,
+        /\bverification code\b/i, /\bauthentication code\b/i,
+        /\bsecurity code\b/i, /\benter.*\bcode\b/i,
+        /\bprovide.*\bcode\b/i,
+      ];
+      const hits = patterns.filter(p => p.test(lc));
+      return { triggered: hits.length > 0, detail: 'Request for one-time or authentication code detected.' };
+    }
+  },
+
+  /* ---- PAYMENT / GIFT CARD ---- */
+  {
+    id: 'payment_request',
+    label: 'Payment or Gift-Card Request',
+    points: 20,
+    severity: 'high',
+    description: 'Requests for iTunes, Amazon, Google Play gift cards or wire transfers are almost always scams.',
+    check(text, lines, lc) {
+      const patterns = [
+        /\bgift.?card\b/i, /\bitunes\b/i, /\bgoogle play\b.*card/i, /\bamazon.?card\b/i,
+        /\bwire transfer\b/i, /\bsend money\b/i, /\btransfer funds\b/i,
+        /\bcrypto(currency)?\b/i, /\bbitcoin\b/i, /\bpayment.*required\b/i,
+        /\bpay.*immediately\b/i, /\bpurchase.*gift card\b/i,
+        /\bsend.*gift card\b/i, /\bpay.*invoice\b.*\burgent\b/i,
+      ];
+      const hits = patterns.filter(p => p.test(lc));
+      return { triggered: hits.length > 0, detail: 'Gift-card or payment demand detected.' };
+    }
+  },
+
+  /* ---- BANK DETAILS CHANGE ---- */
+  {
+    id: 'bank_details',
+    label: 'Request to Change Bank Details',
+    points: 20,
+    severity: 'high',
+    description: 'Business email compromise (BEC) scams redirect payments by asking you to update banking information.',
+    check(text, lines, lc) {
+      const patterns = [
+        /\b(update|change|new|revised)\b.*(bank|account|payment).*(detail|info|number|account)/i,
+        /\b(bank|account).*(detail|info|number).*(change|update|new)\b/i,
+        /\bnew (bank|account) (detail|number|info)\b/i,
+        /\bremittance\b.*\bnew\b/i, /\bsorting code\b/i, /\biban\b.*\bnew\b/i,
+      ];
+      const hits = patterns.filter(p => p.test(lc));
+      return { triggered: hits.length > 0, detail: 'Bank or payment detail change request detected.' };
+    }
+  },
+
+  /* ---- CREDENTIAL HARVESTING LANGUAGE ---- */
+  {
+    id: 'credential_harvest',
+    label: 'Credential-Harvesting Language',
+    points: 12,
+    severity: 'high',
+    description: 'Language designed to get you to submit your username, email and password to a fake site.',
+    check(text, lines, lc) {
+      const patterns = [
+        /\blog(in|on).*below\b/i, /\bsign (in|on).*below\b/i,
+        /\benter.*(username|email|credentials)\b/i,
+        /\bclick.*verify.*account\b/i, /\bconfirm.*your.*identity\b/i,
+        /\bvalidate.*your.*account\b/i, /\breactivate.*your.*account\b/i,
+        /\bupdate.*your.*information\b/i, /\bverify.*your.*(email|account|identity|details)\b/i,
+      ];
+      const hits = patterns.filter(p => p.test(lc));
+      return { triggered: hits.length > 0, detail: 'Credential harvesting phrasing detected.' };
+    }
+  },
+
+  /* ---- IMPERSONATION LANGUAGE ---- */
+  {
+    id: 'impersonation',
+    label: 'Common Impersonation Language',
+    points: 8,
+    severity: 'medium',
+    description: 'Phrases commonly used to impersonate banks, government agencies, or big tech companies.',
+    check(text, lines, lc) {
+      const brands = [
+        'paypal','amazon','apple','microsoft','google','facebook','meta','instagram',
+        'netflix','spotify','hmrc','irs','gov\\.uk','royal mail','fedex','ups','dhl',
+        'barclays','hsbc','natwest','lloyds','chase','bank of america','wells fargo',
+        'linkedin','twitter','dropbox','docusign','adobe sign',
+      ];
+      // Only flag if brand name appears alongside action words
+      const actionWords = /\b(verify|confirm|update|click|login|sign in|suspended|account|password|urgent|immediately)\b/i;
+      const hits = brands.filter(b => new RegExp(`\\b${b}\\b`, 'i').test(lc));
+      if (hits.length > 0 && actionWords.test(lc)) {
+        return { triggered: true, detail: `Brand name(s) used alongside action words: ${hits.join(', ')}.` };
+      }
+      return { triggered: false };
+    }
+  },
+
+  /* ---- SUSPICIOUS URLS ---- */
+  {
+    id: 'suspicious_urls',
+    label: 'Suspicious / Mismatched URLs',
+    points: 15,
+    severity: 'high',
+    description: 'Links whose visible text doesn\'t match the real destination, or whose domain looks like a brand but isn\'t.',
+    check(text, lines, lc) {
+      // Detect common lookalike domains (e.g. paypa1, pay-pal, paypal.secure-login.com)
+      const lookalikes = [
+        /pay.?pa[l1][-.](?!com\b)/i,         // paypal lookalikes
+        /amaz[o0]n[-.](?!com\b)/i,
+        /app[l1]e[-.](?!com\b)/i,
+        /micr[o0]s[o0]ft[-.](?!com\b)/i,
+        /g[o0]{2}gle[-.](?!com\b)/i,
+        /[-.]secure[-.].*\.(com|net|org|info)/i,
+        /[-.]login[-.].*\.(com|net|org|info)/i,
+        /[-.]verify[-.].*\.(com|net|org|info)/i,
+        /[-.]account[-.].*\.(com|net|org|info)/i,
+        /\bsecure-login\b/i,
+        /\bwebscr\b/i,  // paypal phishing
+      ];
+      const hits = lookalikes.filter(p => p.test(text));
+      return { triggered: hits.length > 0, detail: `Suspicious domain pattern(s) found in links.` };
+    }
+  },
+
+  /* ---- SHORTENED URLS ---- */
+  {
+    id: 'shortened_urls',
+    label: 'Shortened / Redirector URLs',
+    points: 10,
+    severity: 'medium',
+    description: 'Short links hide the real destination and are frequently used in phishing.',
+    check(text, lines, lc) {
+      const shorteners = [
+        /\bbit\.ly\b/i, /\btinyurl\.com\b/i, /\bt\.co\b/i,
+        /\bowo\.ly\b/i, /\brebrand\.ly\b/i, /\bshrtco\.de\b/i,
+        /\bcutt\.ly\b/i, /\bshorte\.st\b/i, /\bqr\.ae\b/i,
+        /\bis\.gd\b/i, /\bv\.gd\b/i, /\bclck\.ru\b/i,
+        /\btw\.cn\b/i, /\bshorten\.in\b/i,
+      ];
+      const hits = shorteners.filter(p => p.test(text));
+      return { triggered: hits.length > 0, detail: `Shortened URL service(s) detected: ${hits.length}.` };
+    }
+  },
+
+  /* ---- RAW IP ADDRESS URLS ---- */
+  {
+    id: 'raw_ip_urls',
+    label: 'URLs Containing Raw IP Addresses',
+    points: 15,
+    severity: 'high',
+    description: 'Legitimate services use domain names, not bare numeric IP addresses.',
+    check(text, lines, lc) {
+      // Match http(s)://IP or just IP/path in context
+      const ipUrl = /https?:\/\/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/i;
+      const plainIp = /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\/\S/;
+      const hit = ipUrl.test(text) || plainIp.test(text);
+      return { triggered: hit, detail: hit ? 'IP-address-based URL found.' : '' };
+    }
+  },
+
+  /* ---- UNUSUAL ATTACHMENT FILENAMES ---- */
+  {
+    id: 'suspicious_attachment',
+    label: 'Suspicious Attachment Mentioned',
+    points: 12,
+    severity: 'high',
+    description: 'Dangerous file types or double-extension tricks (e.g. invoice.pdf.exe) are common malware delivery methods.',
+    check(text, lines, lc) {
+      const dangerousExt = /\.(exe|js|vbs|bat|cmd|ps1|scr|hta|jar|msi|reg|dll|lnk|iso|img)\b/i;
+      const doubleExt    = /\.\w{2,4}\.(exe|js|vbs|bat|cmd|ps1|scr|hta|jar)\b/i;
+      const macroWords   = /\b(enable macros?|macro|run.*script)\b/i;
+      const hit = dangerousExt.test(text) || doubleExt.test(text) || macroWords.test(text);
+      return { triggered: hit, detail: hit ? 'Dangerous attachment type or macro request found.' : '' };
+    }
+  },
+
+  /* ---- UNEXPECTED INVOICE ---- */
+  {
+    id: 'invoice',
+    label: 'Unexpected Invoice Language',
+    points: 8,
+    severity: 'medium',
+    description: 'Fake invoice emails trick people into paying or opening malicious attachments.',
+    check(text, lines, lc) {
+      const patterns = [
+        /\binvoice\b.*\bpayment\b/i, /\bpayment\b.*\binvoice\b/i,
+        /\bstatement\b.*\battached\b/i, /\breceipt\b.*\battached\b/i,
+        /\byour order\b.*\bhas been\b/i, /\bpurchase order\b/i,
+        /\bpo #\b/i, /\binvoice #\b/i, /\binvoice number\b/i,
+      ];
+      const hits = patterns.filter(p => p.test(lc));
+      return { triggered: hits.length > 0, detail: 'Invoice-related language found.' };
+    }
+  },
+
+  /* ---- SENDER / REPLY-TO MISMATCH ---- */
+  {
+    id: 'reply_to_mismatch',
+    label: 'Sender / Reply-To Mismatch',
+    points: 15,
+    severity: 'high',
+    description: 'When Reply-To is a different domain to From, replies go to the attacker — not the apparent sender.',
+    check(text, lines, lc) {
+      const fromLine    = lines.find(l => /^from:/i.test(l.trim()));
+      const replyLine   = lines.find(l => /^reply-to:/i.test(l.trim()));
+      if (!fromLine || !replyLine) return { triggered: false };
+
+      const domainOf = str => {
+        const m = str.match(/@([\w.-]+)/);
+        return m ? m[1].toLowerCase() : null;
+      };
+      const fromDomain  = domainOf(fromLine);
+      const replyDomain = domainOf(replyLine);
+
+      if (fromDomain && replyDomain && fromDomain !== replyDomain) {
+        return {
+          triggered: true,
+          detail: `From domain: ${fromDomain} → Reply-To domain: ${replyDomain} (mismatch!)`
+        };
+      }
+      return { triggered: false };
+    }
+  },
+
+  /* ---- SPF FAIL ---- */
+  {
+    id: 'spf_fail',
+    label: 'SPF Authentication Failure',
+    points: 12,
+    severity: 'high',
+    description: 'SPF checks whether the sending server is authorised to send on behalf of the domain. A fail means it isn\'t.',
+    check(text, lines, lc) {
+      const spfLine = lines.find(l => /^received-spf:/i.test(l.trim()) || /\bspf=(fail|softfail|none|permerror|temperror)\b/i.test(l));
+      if (!spfLine) return { triggered: false, detail: 'SPF header not found in pasted text.' };
+      const fail = /\b(fail|softfail|none|permerror|temperror)\b/i.test(spfLine);
+      return {
+        triggered: fail,
+        detail: fail ? `SPF failure detected: "${spfLine.trim()}"` : `SPF pass: "${spfLine.trim()}"`
+      };
+    }
+  },
+
+  /* ---- DKIM FAIL ---- */
+  {
+    id: 'dkim_fail',
+    label: 'DKIM Authentication Failure',
+    points: 10,
+    severity: 'high',
+    description: 'DKIM verifies the email\'s cryptographic signature. A failure means the message was tampered with or is forged.',
+    check(text, lines, lc) {
+      const dkimLine = lines.find(l => /dkim=(fail|none|invalid|permerror|temperror)/i.test(l));
+      if (!dkimLine) return { triggered: false, detail: 'DKIM result header not found in pasted text.' };
+      return {
+        triggered: true,
+        detail: `DKIM failure detected: "${dkimLine.trim()}"`
+      };
+    }
+  },
+
+  /* ---- DMARC FAIL ---- */
+  {
+    id: 'dmarc_fail',
+    label: 'DMARC Policy Failure',
+    points: 10,
+    severity: 'high',
+    description: 'DMARC ties SPF and DKIM together. A failure means the domain owner\'s policy was not satisfied.',
+    check(text, lines, lc) {
+      const dmarcLine = lines.find(l => /dmarc=(fail|none|invalid|permerror|temperror)/i.test(l));
+      if (!dmarcLine) return { triggered: false, detail: 'DMARC result header not found in pasted text.' };
+      return {
+        triggered: true,
+        detail: `DMARC failure detected: "${dmarcLine.trim()}"`
+      };
+    }
+  },
+
+  /* ---- GENERIC GREETING ---- */
+  {
+    id: 'generic_greeting',
+    label: 'Generic / Impersonal Greeting',
+    points: 5,
+    severity: 'low',
+    description: 'Legitimate services usually address you by name. Generic greetings suggest a mass-phishing campaign.',
+    check(text, lines, lc) {
+      const patterns = [
+        /^dear (customer|user|member|account holder|valued customer|client|friend)\b/im,
+        /^hello (customer|user|member|friend)\b/im,
+        /^(hi|hey) (there|user|customer|friend)\b/im,
+        /^to whom it may concern\b/im,
+        /^attention (customer|user|account holder)\b/im,
+      ];
+      const hits = patterns.filter(p => p.test(text));
+      return { triggered: hits.length > 0, detail: 'Non-personalised greeting found.' };
+    }
+  },
+
+  /* ---- POOR GRAMMAR / SPELLING ---- */
+  {
+    id: 'grammar_errors',
+    label: 'Notable Grammar or Spelling Errors',
+    points: 6,
+    severity: 'low',
+    description: 'Phishing emails, especially translated ones, often contain unusual grammar.',
+    check(text, lines, lc) {
+      const patterns = [
+        /\bkindly do the needful\b/i, /\brevert back\b/i,
+        /\bdo the needful\b/i, /\bplease to\b/i,
+        /\byour (account|id) (is|has been) (suspend|block|disable|close)/i,
+        /\bfor your (inconvinience|inconveniance|incovenience)\b/i,
+        /\bwe (is|are) (inform|notif)\b/i,
+        /\bclick the below link\b/i,
+      ];
+      const hits = patterns.filter(p => p.test(lc));
+      return { triggered: hits.length > 0, detail: `Suspicious phrasing or grammar patterns found.` };
+    }
+  },
+
+  /* ---- EXCESSIVE EXCLAMATION / CAPS ---- */
+  {
+    id: 'excessive_caps',
+    label: 'Excessive Capitalisation or Exclamation Marks',
+    points: 4,
+    severity: 'low',
+    description: 'All-caps words and multiple exclamation marks are psychological pressure tactics.',
+    check(text, lines, lc) {
+      const capsWords     = (text.match(/\b[A-Z]{3,}\b/g) || []).length;
+      const exclamations  = (text.match(/!/g) || []).length;
+      const hit = capsWords > 5 || exclamations > 3;
+      return {
+        triggered: hit,
+        detail: hit ? `Found ${capsWords} ALL-CAPS words and ${exclamations} exclamation mark(s).` : ''
+      };
+    }
+  },
+
+];
+
+/* ------------------------------------------------------------------
+   SAMPLE PHISHING EMAIL
+------------------------------------------------------------------ */
+const SAMPLE_EMAIL = `From: security@paypa1-secure-login.com
+Reply-To: attacker2024@protonmail.com
+To: victim@example.com
+Subject: URGENT ACTION REQUIRED: Your PayPal Account Has Been Suspended!
+Date: Fri, 06 Nov 2026 08:00:00 +0000
+Received-SPF: fail (paypa1-secure-login.com does not designate 185.220.101.9 as permitted sender)
+Authentication-Results: mx.example.com;
+   dkim=fail (signature verification failed) header.i=@paypa1-secure-login.com;
+   dmarc=fail (p=REJECT) header.from=paypal.com
+
+Dear Customer,
+
+URGENT!! Your PayPal account has been PERMANENTLY SUSPENDED due to unusual activity!
+
+You must verify your identity IMMEDIATELY or your account will be closed within 24 hours.
+
+Please provide the following to restore your account:
+- Your password
+- Your one-time verification code
+- Credit card details
+
+Click here to verify NOW: http://192.168.4.22/verify-paypal
+Alternative link: bit.ly/paypa1secure
+
+We also need you to update your bank account details as our records show your payment information has changed. Please provide your new bank account number and sort code immediately.
+
+Additionally, please open the attached file (account_statement.pdf.exe) and enable macros to view your account history.
+
+If you do not act now your account will be terminated!
+
+Regards,
+PayPal Security Team
+PayPal, Inc.`;
+
+/* ------------------------------------------------------------------
+   MAIN ANALYSIS FUNCTION
+------------------------------------------------------------------ */
+function analyse() {
+  const rawText = document.getElementById('emailInput').value.trim();
+  if (!rawText) {
+    alert('Please paste an email into the text box first.');
+    return;
+  }
+
+  const lines = rawText.split(/\r?\n/);
+  const lc    = rawText.toLowerCase();
+
+  /* Run all checks */
+  const results = INDICATORS.map(ind => {
+    const result = ind.check(rawText, lines, lc);
+    return {
+      ...ind,
+      triggered: result.triggered,
+      detail:    result.detail || '',
+    };
+  });
+
+  /* Calculate raw score (sum triggered points) */
+  const rawScore = results
+    .filter(r => r.triggered)
+    .reduce((sum, r) => sum + r.points, 0);
+
+  const score = Math.min(100, rawScore);
+
+  /* Classify */
+  let level, classLabel, summary, dialColour, barClass;
+  if (score <= 39) {
+    level       = 'low';
+    classLabel  = '✅ Low Risk';
+    summary     = 'No major red flags were detected. This email appears relatively safe, but always stay cautious.';
+    dialColour  = '#3fb950';
+    barClass    = 'low';
+  } else if (score <= 69) {
+    level       = 'medium';
+    classLabel  = '⚠️ Suspicious';
+    summary     = 'Several warning signs were found. Treat this email with significant caution and do not click any links.';
+    dialColour  = '#d29922';
+    barClass    = 'medium';
+  } else {
+    level       = 'high';
+    classLabel  = '🚨 High Risk — Likely Phishing';
+    summary     = 'Multiple strong phishing indicators detected. Do NOT click links, open attachments, or reply. Report and delete.';
+    dialColour  = '#f85149';
+    barClass    = 'high';
+  }
+
+  /* ---- Render ---- */
+  renderHero(score, level, classLabel, summary, dialColour, barClass);
+  renderIndicators(results);
+  renderBreakdown(results, score);
+  renderRecommendations(score, level, results);
+
+  /* Show results */
+  document.getElementById('results').style.display = 'block';
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ------------------------------------------------------------------
+   RENDER: SCORE HERO
+------------------------------------------------------------------ */
+function renderHero(score, level, classLabel, summary, dialColour, barClass) {
+  const hero = document.getElementById('scoreHero');
+  hero.className = `score-hero ${level}`;
+
+  document.getElementById('scoreNumber').textContent = score;
+  document.getElementById('classification').textContent = classLabel;
+  document.getElementById('scoreSummary').textContent = summary;
+
+  /* Animate dial */
+  const circumference = 295.3;
+  const fill = document.getElementById('dialFill');
+  fill.style.stroke = dialColour;
+  setTimeout(() => {
+    const offset = circumference - (score / 100) * circumference;
+    fill.style.strokeDashoffset = offset;
+  }, 50);
+
+  /* Bar */
+  document.getElementById('barLabel').textContent = `${score} / 100`;
+  const barFill = document.getElementById('barFill');
+  barFill.className = `bar-fill ${barClass}`;
+  setTimeout(() => { barFill.style.width = `${score}%`; }, 50);
+}
+
+/* ------------------------------------------------------------------
+   RENDER: INDICATORS
+------------------------------------------------------------------ */
+function renderIndicators(results) {
+  const triggered = results.filter(r => r.triggered);
+  const clean     = results.filter(r => !r.triggered);
+
+  /* Triggered */
+  const tList = document.getElementById('triggeredList');
+  tList.innerHTML = '';
+
+  if (triggered.length === 0) {
+    tList.innerHTML = '<div class="indicator-item info"><span class="ind-icon">ℹ️</span><div class="ind-body"><div class="ind-title">No warning signs detected</div><div class="ind-desc">The analyser found no phishing indicators in this email.</div></div></div>';
+  } else {
+    triggered.forEach(r => {
+      const badge = r.severity === 'high'   ? 'badge-red' :
+                    r.severity === 'medium' ? 'badge-yellow' : 'badge-blue';
+      const icon  = r.severity === 'high'   ? '🔴' :
+                    r.severity === 'medium' ? '🟡' : '🔵';
+
+      tList.insertAdjacentHTML('beforeend', `
+        <div class="indicator-item triggered">
+          <span class="ind-icon">${icon}</span>
+          <div class="ind-body">
+            <div class="ind-title">${escHtml(r.label)}</div>
+            <div class="ind-desc">${escHtml(r.description)}</div>
+            ${r.detail ? `<div class="ind-desc" style="margin-top:4px;color:#cda47e;font-style:italic;">↳ ${escHtml(r.detail)}</div>` : ''}
+          </div>
+          <span class="ind-score-badge ${badge}">+${r.points} pts</span>
+        </div>`);
+    });
+  }
+
+  /* Clean */
+  const cList = document.getElementById('cleanList');
+  cList.innerHTML = '';
+  if (clean.length === 0) {
+    document.getElementById('cleanSection').style.display = 'none';
+  } else {
+    document.getElementById('cleanSection').style.display = 'block';
+    clean.forEach(r => {
+      cList.insertAdjacentHTML('beforeend', `
+        <div class="indicator-item info">
+          <span class="ind-icon">✅</span>
+          <div class="ind-body">
+            <div class="ind-title">${escHtml(r.label)}</div>
+            <div class="ind-desc">${escHtml(r.description)}</div>
+            ${r.detail ? `<div class="ind-desc" style="margin-top:4px;color:var(--text-muted);font-style:italic;">↳ ${escHtml(r.detail)}</div>` : ''}
+          </div>
+          <span class="ind-score-badge badge-green">0 pts</span>
+        </div>`);
+    });
+  }
+}
+
+/* ------------------------------------------------------------------
+   RENDER: SCORE BREAKDOWN TABLE
+------------------------------------------------------------------ */
+function renderBreakdown(results, totalScore) {
+  const tbody = document.getElementById('breakdownBody');
+  tbody.innerHTML = '';
+
+  results.forEach(r => {
+    const pts = r.triggered ? r.points : 0;
+    tbody.insertAdjacentHTML('beforeend', `
+      <tr>
+        <td>${escHtml(r.label)}</td>
+        <td class="pts ${pts === 0 ? 'zero' : ''}">${pts === 0 ? '0' : '+' + pts}</td>
+      </tr>`);
+  });
+
+  const rawSum = results.filter(r => r.triggered).reduce((s, r) => s + r.points, 0);
+  const totEl  = document.getElementById('breakdownTotal');
+  totEl.textContent = totalScore + (rawSum > 100 ? ` (raw: ${rawSum}, capped at 100)` : '');
+}
+
+/* ------------------------------------------------------------------
+   RENDER: RECOMMENDATIONS
+------------------------------------------------------------------ */
+function renderRecommendations(score, level, results) {
+  const recs = [];
+
+  /* Universal */
+  recs.push('Do not click any links or open any attachments in this email until you are certain it is legitimate.');
+
+  /* Conditional */
+  if (results.find(r => r.id === 'password_request' && r.triggered)) {
+    recs.push('Never provide your password in response to an email. No legitimate organisation will ever ask for it.');
+  }
+  if (results.find(r => r.id === 'mfa_code_request' && r.triggered)) {
+    recs.push('Never share one-time codes or MFA tokens via email. This is a real-time phishing technique used to bypass two-factor authentication.');
+  }
+  if (results.find(r => r.id === 'payment_request' && r.triggered)) {
+    recs.push('Verify any payment request by calling the person or organisation directly using a phone number you already know — not one provided in the email.');
+  }
+  if (results.find(r => r.id === 'bank_details' && r.triggered)) {
+    recs.push('Always verify bank detail change requests over the phone using a trusted number before making any payment.');
+  }
+  if (results.find(r => r.id === 'suspicious_attachment' && r.triggered)) {
+    recs.push('Do not open any attachments. Executable file types (.exe, .js, .vbs etc.) can install malware. If macros are requested, decline.');
+  }
+  if (results.find(r => r.id === 'raw_ip_urls' && r.triggered)) {
+    recs.push('Avoid any link that uses a raw IP address (numbers instead of a domain name) — this is a strong sign of a fake site.');
+  }
+  if (results.find(r => r.id === 'shortened_urls' && r.triggered)) {
+    recs.push('Hover over (or use a URL expander service like checkshorturl.com) to preview where short links actually lead before clicking.');
+  }
+  if (results.find(r => r.id === 'reply_to_mismatch' && r.triggered)) {
+    recs.push('The Reply-To address differs from the From address. If you reply, your message will go to the attacker, not the apparent sender.');
+  }
+  if (['spf_fail','dkim_fail','dmarc_fail'].some(id => results.find(r => r.id === id && r.triggered))) {
+    recs.push('Email authentication checks (SPF/DKIM/DMARC) failed. This is technical evidence that this email was not sent by the legitimate domain owner.');
+  }
+
+  /* Level-based advice */
+  if (level === 'high') {
+    recs.push('Report this email as phishing using your email client\'s built-in reporting feature, or forward it to report@phishing.gov.uk (UK) or phishing-report@us-cert.gov (US).');
+    recs.push('If you have already clicked a link or provided credentials, change your passwords immediately and enable two-factor authentication on affected accounts.');
+    recs.push('Contact your IT or security team if this arrived in a work inbox.');
+  } else if (level === 'medium') {
+    recs.push('If you were not expecting this email, contact the sender through a separate, trusted channel (e.g. official website or phone number) to confirm it is genuine before taking any action.');
+  } else {
+    recs.push('Even low-risk emails can be legitimate-looking phishes. If in doubt, verify independently before clicking anything or providing any information.');
+  }
+
+  const list = document.getElementById('recList');
+  list.innerHTML = '';
+  recs.forEach((rec, i) => {
+    list.insertAdjacentHTML('beforeend', `
+      <div class="rec-item">
+        <div class="rec-num">${i + 1}</div>
+        <div>${escHtml(rec)}</div>
+      </div>`);
+  });
+}
+
+/* ------------------------------------------------------------------
+   HELPERS
+------------------------------------------------------------------ */
+function escHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function clearAll() {
+  document.getElementById('emailInput').value = '';
+  document.getElementById('results').style.display = 'none';
+  /* Reset dial */
+  document.getElementById('dialFill').style.strokeDashoffset = '295.3';
+  document.getElementById('barFill').style.width = '0%';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function loadSample() {
+  document.getElementById('emailInput').value = SAMPLE_EMAIL;
+  document.getElementById('emailInput').scrollTop = 0;
+}
+
+function resetToInput() {
+  document.getElementById('results').style.display = 'none';
+  /* Reset animations for next run */
+  document.getElementById('dialFill').style.strokeDashoffset = '295.3';
+  document.getElementById('dialFill').style.transition = 'none';
+  document.getElementById('barFill').style.width = '0%';
+  document.getElementById('barFill').style.transition = 'none';
+  setTimeout(() => {
+    document.getElementById('dialFill').style.transition = 'stroke-dashoffset 1s cubic-bezier(0.4,0,0.2,1)';
+    document.getElementById('barFill').style.transition = 'width 1s cubic-bezier(0.4,0,0.2,1)';
+  }, 100);
+  document.getElementById('inputCard').scrollIntoView({ behavior: 'smooth' });
+}
+</script>
+</body>
+</html>
